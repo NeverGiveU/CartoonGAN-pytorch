@@ -1,0 +1,2 @@
+A txt file to record the training losses.
+And we also provide a plotting .py file for plotting the training losses.

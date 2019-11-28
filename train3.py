@@ -22,6 +22,7 @@ import torch
 import torch.nn as nn
 import os
 from tqdm import tqdm
+from torchvision import transforms
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', type=int, default=1e-4, help='learning rate, default=0.0002')
@@ -82,6 +83,8 @@ if __name__ == '__main__':
         trainC_files[i] = os.path.join(datasets_pth['trainC'], trainC_files[i])
     print("Finish loading the datasets, and there are: <<{}>> human-faces, and <<{}>> manga-faces!".format(l_A, l_B))
 
+    transform = transforms.Compose([transforms.Resize(IMG_SIZE),
+                                    transforms.CenterCrop(IMG_SIZE)])
     '''Models'''
     G = CartoonGenerator()
     D = Discriminator()
@@ -144,7 +147,8 @@ if __name__ == '__main__':
             X = np.zeros((opt.batch_size, 3, IMG_SIZE, IMG_SIZE))
             for c in range(opt.batch_size):
                 img = Image.open(trainA_files[(i_l * opt.batch_size+c) % l_A])
-                img.thumbnail((IMG_SIZE, IMG_SIZE))
+                # img.thumbnail((IMG_SIZE, IMG_SIZE))
+                img = transform(img)
                 X[c, :, :, :] = np.array(img).transpose(2,0,1)
             
             X = torch.from_numpy(X.astype(np.float32))
@@ -193,6 +197,7 @@ if __name__ == '__main__':
 
 
     #### pretrain the discriminator
+    criterionAdv = nn.MSELoss()# nn.BCELoss()
     PRETRAIN_DISCRIMINATOR_BATCH_SIZE = 16
     opt.batch_size = PRETRAIN_DISCRIMINATOR_BATCH_SIZE
     n_A = int(PRETRAIN_DISCRIMINATOR_BATCH_SIZE / 4)
@@ -225,10 +230,11 @@ if __name__ == '__main__':
                 H, W = img.size[0], img.size[1]
                 if H<IMG_SIZE or W<IMG_SIZE:
                     continue
-                img.thumbnail((IMG_SIZE, IMG_SIZE))
+                # img.thumbnail((IMG_SIZE, IMG_SIZE))
+                img = transform(img)
                 #print(img.size)
                 arr = np.array(img).transpose(2,0,1)
-                arr = arr/255
+                arr = 2*(arr/255) - 1.0
                 arr = torch.from_numpy(arr.astype(np.float32))
                 
                 label = np.zeros((1, IMG_SIZE//4, IMG_SIZE//4))
@@ -245,10 +251,11 @@ if __name__ == '__main__':
                 H, W = img.size[0], img.size[1]
                 if H<IMG_SIZE or W<IMG_SIZE:
                     continue
-                img.thumbnail((IMG_SIZE, IMG_SIZE))
+                # img.thumbnail((IMG_SIZE, IMG_SIZE))
+                img = transform(img)
                 #print(img.size)
                 arr = np.array(img).transpose(2,0,1)
-                arr = arr/255
+                arr = 2*(arr/255) - 1.0
                 arr = torch.from_numpy(arr.astype(np.float32))
                 
                 label = np.ones((1, IMG_SIZE//4, IMG_SIZE//4))
@@ -265,10 +272,11 @@ if __name__ == '__main__':
                 H, W = img.size[0], img.size[1]
                 if H<IMG_SIZE or W<IMG_SIZE:
                     continue
-                img.thumbnail((IMG_SIZE, IMG_SIZE))
+                # img.thumbnail((IMG_SIZE, IMG_SIZE))
+                img = transform(img)
                 #print(img.size)
                 arr = np.array(img).transpose(2,0,1)
-                arr = arr/255
+                arr = 2*(arr/255) - 1.0
                 arr = torch.from_numpy(arr.astype(np.float32))
                 
                 label = np.zeros((1, IMG_SIZE//4, IMG_SIZE//4))
@@ -331,6 +339,7 @@ if __name__ == '__main__':
     print("Ready for the adversarial training")
     opt.batch_size = 4
     max_iterations = max(l_A // opt.batch_size, l_B // opt.batch_size, l_C // opt.batch_size)
+    criterionAdv = AdversialLoss()
     
     loss_D = loss_adv = loss_con = 0.0
     for epoch in range(EPOCH):
@@ -354,10 +363,11 @@ if __name__ == '__main__':
                 H, W = img.size[0], img.size[1]
                 if H < IMG_SIZE or W < IMG_SIZE:
                     continue
-                img.thumbnail((IMG_SIZE, IMG_SIZE))
+                # img.thumbnail((IMG_SIZE, IMG_SIZE))
+                img = transform(img)
                 X[c, :, :, :] = np.array(img).transpose(2,0,1)
                 c += 1
-            X = X / 255
+            X = 2*(X / 255) - 1.0
             X = torch.from_numpy(X.astype(np.float32))
             if gpu >= 0:
                 X = X.to(gpu)
@@ -376,10 +386,11 @@ if __name__ == '__main__':
                     H, W = img.size[0], img.size[1]
                     if H < IMG_SIZE or W < IMG_SIZE:
                         continue
-                    img.thumbnail((IMG_SIZE, IMG_SIZE))
+                    # img.thumbnail((IMG_SIZE, IMG_SIZE))
+                    img = transform(img)
                     real_X[c, :, :, :] = np.array(img).transpose(2,0,1)
                     c += 1
-                real_X = real_X / 255
+                real_X = 2*(real_X / 255) - 1.0
                 real_X = torch.from_numpy(real_X.astype(np.float32))
                 if gpu >= 0:
                     real_X = real_X.to(gpu)
@@ -400,10 +411,11 @@ if __name__ == '__main__':
                     H, W = img.size[0], img.size[1]
                     if H < IMG_SIZE or W < IMG_SIZE:
                         continue
-                    img.thumbnail((IMG_SIZE, IMG_SIZE))
+                    # img.thumbnail((IMG_SIZE, IMG_SIZE))
+                    img = transform(img)
                     blur_X[c, :, :, :] = np.array(img).transpose(2,0,1)
                     c += 1
-                blur_X = blur_X / 255
+                blur_X = 2*(blur_X / 255) - 1.0
                 blur_X = torch.from_numpy(blur_X.astype(np.float32))
                 if gpu >= 0:
                     blur_X = blur_X.to(gpu)
